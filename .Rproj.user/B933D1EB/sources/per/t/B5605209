@@ -1,0 +1,26 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1562924180893.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "3659776124",
+    "id" : "B5605209",
+    "lastKnownWriteTime" : 1563184856,
+    "last_content_update" : 1563184856608,
+    "path" : "~/R/Side Projects/Rent Scraping/rent_scraping.R",
+    "project_path" : "rent_scraping.R",
+    "properties" : {
+        "cursorPosition" : "9,15",
+        "scrollLine" : "0",
+        "tempName" : "Untitled1"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

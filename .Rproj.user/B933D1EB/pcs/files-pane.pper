@@ -1,0 +1,9 @@
+{
+    "path" : "~/R/Side Projects/Rent Scraping/scrapes",
+    "sortOrder" : [
+        {
+            "ascending" : true,
+            "columnIndex" : 2
+        }
+    ]
+}

@@ -1,0 +1,25 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1562933881131.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "4128093700",
+    "id" : "A66FE5FC",
+    "lastKnownWriteTime" : 1562683269,
+    "last_content_update" : 1562683269,
+    "path" : "~/R/Work Related/Glassdoor Script/Output Crunching v3.R",
+    "project_path" : null,
+    "properties" : {
+        "cursorPosition" : "56,32",
+        "scrollLine" : "0"
+    },
+    "read_only" : false,
+    "read_only_alternatives" : [
+    ],
+    "relative_order" : 7,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
