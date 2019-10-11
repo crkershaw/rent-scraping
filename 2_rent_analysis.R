@@ -1,5 +1,13 @@
 #### Searching for a room in NYC ####
-# Analysis of Spare Room scrape #
+
+
+# 2. Analysis of scraped spare room data
+# This second script takes the table of scraped data from the first script and analyses it
+# It produces descriptive graphs to examine neighbourhoods by commute time and price
+# It also saves a map of New York with this information overlaid onto it
+
+# Basic Setup -------------------------------------------------------------
+
 library(ggmap)
 library(googleAuthR)
 library(rjson)
@@ -13,8 +21,6 @@ library(maptools)
 library(ggrepel)
 library(shadowtext)
 
-
-#create custom theme---------------------------------------------
 CustomTheme <- theme_bw()+
   theme(
     legend.text = element_text(colour="grey47"),
@@ -34,14 +40,15 @@ CustomTheme <- theme_bw()+
   )
 
 
-
-load("scrapes/2019-7-12 rent_scrape.Rdata")
-
+# Inputs ------------------------------------------------------------------
 google_login <- read_lines("C:/Users/charlie-kershaw/Documents/R/google_api_key.txt")
-register_google(key = google_login)
 
+date_string <- "2019-7-12"   # Enter the date you would like to use the data for in format YYYY-M-D (as per data file)
 
 # Analysis ----------------------------------------------------------------
+load(paste0("scrapes/",date_string," rent_scrape.Rdata"))
+
+register_google(key = google_login)
 
 # Cutting out too far
 output_out <- output_commute %>%
@@ -125,7 +132,6 @@ nyc_neighborhoods <- readOGR(content(r,'text'), 'OGRGeoJSON', verbose = F)
 summary(nyc_neighborhoods)
 nyc_neighborhoods_df <- tidy(nyc_neighborhoods)
 
-
 rent_map <- ggmap(nyc_map) + 
   geom_polygon(data=plot_data, aes(x=long_zip, y=lat_zip, group=group, fill = med_commute_time),colour="blue",alpha=0.7) +
   scale_fill_gradient2(low="green",high="red",mid="white",midpoint = 25,limits=c(0,45))+
@@ -136,7 +142,10 @@ rent_map <- ggmap(nyc_map) +
 
 rent_map
 
+
+# Saving the map ----------------------------------------------------------
+
 set.seed(142)
-png("2019 07 16 Rent map.png", width=900,height=1400,res=144)
+png(paste0("outputs/",date_string," Rent map.png"), width=900,height=1400,res=144)
 rent_map
 dev.off()
