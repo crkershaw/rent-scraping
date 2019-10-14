@@ -1,5 +1,11 @@
 # rent-scraping
-This is a set of scripts for scraping rental data for New York City
+This is a set of scripts for scraping rental data for New York City. For any given Spare Room search, the script goes through
+every page of results and extracts key information about each listing.
+
+It then uses the Google Maps API to pull longitude and latitude for their postcodes, and uses this to calculate commute time to 
+work in midtown.
+
+The second script then takes this and performs analysis by neighbourhood
 
 ## Script 1 - Rent Scraping
 The first script scrapes spare room, using any search URL that you want.
