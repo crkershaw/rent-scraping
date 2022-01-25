@@ -12,39 +12,51 @@
 #   Page 2: "https://www.spareroom.com/roommate/?offset=10&search_id=500028946123&sort_by=age&mode=list"
 #   Page 3: "https://www.spareroom.com/roommate/?offset=20&search_id=500028946123&sort_by=age&mode=list"
 
-# Basic Setup -------------------------------------------------------------
-library(rvest)
-library(tidyverse)
-library(gsubfn)
-library(lubridate)
-library(googleAuthR)
-library(ggmap)
-library(gmapsdistance)
-library(tigris)
-
-
-# Inputs ------------------------------------------------------------------
-google_login <- read_lines("C:/Users/charlie-kershaw/Documents/R/google_api_key.txt")
+# Configuration -----------------------------------
+commute_date <- "2022-04-18" # Date (YYYY-MM-DD) for commute length calculations - must be in the future, likely a weekday
+commute_arr_time = "08:30:00" # Arrival time for commute length calculations
+api_key_location <- "api-key/gcloud_api_key.txt"
 
 # Create a search on spare room and copy the search id for the search here 
 # This allows you to set preferences like max rent, smoking/non-smoking etc
-search_id <- "search_id=500028946123" # Search for NYC, no smoking, max $2000 a month
+search_id <- "search_id=500050688210"
+results_per_page <- 11 # Number of results displayed per page on Spare Room
 
-results_per_page <- 11
+# Office location (used as destination for commute)
+office = c("40.76812214708413+-73.92476890076448")
+
+# Basic Setup -------------------------------------------------------------
+libraries <- c("rvest", "tidyverse", "gsubfn", "lubridate", "googleAuthR", "ggmap", "gmapsdistance", "tigris")
+
+new_packages <- libraries[!(libraries %in% installed.packages()[, "Package"])]
+if(length(new_packages)>0){ 
+  install.packages(new_packages) 
+}
+
+lapply(libraries, library, character.only = TRUE)
+
+custom_functions = list.files("R/")
+sapply(custom_functions, source)
 
 
 # Universal settings ------------------------------------------------------
 base_url <- "https://www.spareroom.com/roommate/?"
 end <- "&sort_by=age&mode=list"
-
+google_login <- read_lines(api_key_location)
 
 # Scraper -----------------------------------------------------------------
 
 # Calculating total search results
 page_1 <- paste0(base_url,"offset=0","&",search_id,end)
-num_results <- page_1 %>% read_html %>% html_nodes("#results_header strong:nth-child(2)") %>% html_text %>% as.numeric()
-page_1 %>% read_html %>%
+
+num_results <- page_1 %>% 
+  read_html() %>% 
+  html_nodes("#results_header strong:nth-child(2)") %>% 
+  html_text() %>% 
+  as.numeric()
+
 results_per_page <- 11
+
 total_pages <- ceiling(num_results / results_per_page)
 pages_vector <- seq(1,total_pages,1)
 
@@ -97,18 +109,23 @@ f_pagetable <- function(pageno){
 
 scrape_output <- map_df(pages_vector,f_pagetable)
 
+
 output_formatted <- scrape_output %>%
-  mutate(monthly_min_usd = as.numeric(trimws(gsubfn(".",list("$"="",","=""),monthly_min_usd))),
+  mutate(monthly_price_usd = as.numeric(trimws(gsub("[^0-9]","",monthly_price_usd))),
+         monthly_min_usd = as.numeric(trimws(gsub("[^0-9]","",monthly_min_usd))),
          monthly_max_usd = as.numeric(ifelse(is.na(monthly_max_usd),
                                              monthly_min_usd,
-                                             trimws(gsubfn(".",list("$"="",","=""),monthly_max_usd))
-         ))
-  )
-date <- paste0(year(Sys.Date()),"-",month(Sys.Date()),"-",day(Sys.Date())," ")
+                                             gsub("[^0-9]","",monthly_max_usd)))
+         )
+
+f_convertnum <- function(num){
+  return(ifelse(num<10, paste0("0",as.character(num)), as.character(num)))
+}
+
+date <- paste0(f_convertnum(year(Sys.Date())),"-",f_convertnum(month(Sys.Date())),"-",f_convertnum(day(Sys.Date()))," ")
 
 
 # Pulling longitude and latitude ------------------------------------------
-
 register_google(key = google_login)
 
 output_longlat <- output_formatted %>%
@@ -117,36 +134,38 @@ output_longlat <- output_formatted %>%
          postcode_latlong = paste0(postcode_lat,"+",postcode_long)
          )
 
-output_longlat <- output_longlat %>%
-  mutate(postcode_latlong = paste0(lat,"+",long))
 
 # Pulling commute time ----------------------------------------------------
 set.api.key(google_login)
+
+# Example home coordinates
+home = c("40.431478+-80.0505401","40.8310224+-73.9095279","40.7043156+-73.9212858")
+
 
 f_timedistance <- function(latlong){
   output = gmapsdistance(origin = latlong,
                 destination = office,
                 key = get.api.key(),
                 mode = "transit",
-                arr_date = "2020-06-01",
-                arr_time = "08:30:00")
+                arr_date = commute_date,
+                arr_time = commute_arr_time)
 }
-
-# Example commute time pull
-home = c("40.431478+-80.0505401","40.8310224+-73.9095279","40.7043156+-73.9212858")
-office = c("40.756950+-73.982033")
 
 test_input <- tibble(latlong=home)
 test_times <- f_timedistance(test_input$latlong)
+
 test_output <- test_input %>%
-  mutate(distance = unlist(test_times$Distance[2]),time = unlist(test_times$Time[2]))
+  mutate(distance = unlist(test_times$Distance[2]),
+         time = unlist(test_times$Time[2])
+         )
 
 # Scraped data commute time pull
 temp_timedistance <- f_timedistance(output_longlat$postcode_latlong)
 
-temp_time <- as.tibble(temp_timedistance$Time) 
+temp_time <- as_tibble(temp_timedistance$Time) 
 colnames(temp_time) <- c("postcode_latlong","commute_time")
-temp_distance <- as.tibble(temp_timedistance$Distance)
+
+temp_distance <- as_tibble(temp_timedistance$Distance)
 colnames(temp_distance) <- c("postcode_latlong","commute_distance")
 
 output_commute <- output_longlat %>%

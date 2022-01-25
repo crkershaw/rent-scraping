@@ -29,3 +29,10 @@ Google API Login
 Numerous plots comparing different areas by rent price and commute time (not saved)
 
 Map of New York, split by postcodes with rental prices overlaid and coloured by commute time (from postcode center)
+
+## Logging into the Google Maps API
+### Enabling the Distance Matrix API
+You can find the instructions for enabling the [Directions](https://developers.google.com/maps/documentation/directions/cloud-setup?hl=en), [Distance Matrix API](https://developers.google.com/maps/documentation/distance-matrix/cloud-setup), and the [GeoCode API](https://developers.google.com/maps/documentation/javascript/geocoding?hl=en) used to calculate commute times, 
+and the [Maps Static API](https://developers.google.com/maps/documentation/maps-static/overview) used to visualise the map. 
+
+You must enable the APIs, and create a API Key credential for it. Then save the api key in the api-key folder (or somewhere else and adjust the link to it).

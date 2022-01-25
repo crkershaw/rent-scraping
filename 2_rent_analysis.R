@@ -6,20 +6,24 @@
 # It produces descriptive graphs to examine neighbourhoods by commute time and price
 # It also saves a map of New York with this information overlaid onto it
 
+
+
+# Configuration -----------------------------------
+api_key_location <- "api-key/gcloud_api_key.txt"
+date_string <- "2022-01-24"   # Enter the date you would like to use the data save name in format YYYY-MM-DD
+
+
 # Basic Setup -------------------------------------------------------------
 
-library(ggmap)
-library(googleAuthR)
-library(rjson)
-library(httr)
-library(rgdal)
-library(rgeos)
-library(broom)
-library(tidyverse)
-library(tigris)
-library(maptools)
-library(ggrepel)
-library(shadowtext)
+libraries <- c("rvest", "tidyverse", "gsubfn", "lubridate", "googleAuthR", "ggmap", "gmapsdistance", "tigris",
+               "rjson", "httr", "rgdal", "rgeos", "broom", "tigris", "maptools", "ggrepel", "shadowtext")
+
+new_packages <- libraries[!(libraries %in% installed.packages()[, "Package"])]
+if(length(new_packages)>0){ 
+  install.packages(new_packages) 
+}
+
+lapply(libraries, library, character.only = TRUE)
 
 CustomTheme <- theme_bw()+
   theme(
@@ -40,14 +44,10 @@ CustomTheme <- theme_bw()+
   )
 
 
-# Inputs ------------------------------------------------------------------
-google_login <- read_lines("C:/Users/charlie-kershaw/Documents/R/google_api_key.txt")
-
-date_string <- "2019-7-12"   # Enter the date you would like to use the data for in format YYYY-M-D (as per data file)
-
 # Analysis ----------------------------------------------------------------
 load(paste0("scrapes/",date_string," rent_scrape.Rdata"))
 
+google_login <- read_lines(api_key_location)
 register_google(key = google_login)
 
 # Cutting out too far
@@ -55,7 +55,7 @@ output_out <- output_commute %>%
   mutate(commute_time = commute_time / 60) %>%
   filter(commute_time <= 45)
 
-# Assinging points by distance and cost
+# Assigning points by distance and cost
 output_analysis <- output_out %>%
   mutate(price_2 = (monthly_max_usd ** 2) / median(monthly_max_usd ** 2, na.rm=TRUE),
          time_2 = commute_time ** 2 / median(commute_time ** 2, na.rm=TRUE),
@@ -97,12 +97,11 @@ output_neighbourhood %>%
 
 # Summary info by postcode
 summary_postcode <- output_out %>%
-  mutate(long_lat = paste0(long,"-",lat)) %>%
-  group_by(long_lat) %>%
-  summarise(long=max(long),
-            lat=max(lat),
+  group_by(postcode_latlong) %>%
+  summarise(lat=max(postcode_lat ),
+            long=max(postcode_long ),
             postcode=max(postcode),
-            median_monthly = median(monthly_max_usd,na.rm=TRUE),
+            median_monthly = median(monthly_price_usd,na.rm=TRUE),
             min_monthly = min(monthly_min_usd,na.rm=TRUE),
             max_monthly = max(monthly_max_usd,na.rm=TRUE),
             med_commute_time = median(commute_time),
@@ -111,7 +110,7 @@ summary_postcode <- output_out %>%
 
 
 # Setting up map ----------------------------------------------------------
-nyc_map <- get_map(location = c(lon = -74.00, lat = 40.71), maptype = "terrain", zoom = 11)
+nyc_map <- get_map(location = c(lon = -74.00, lat = 40.71), maptype = c("terrain"), zoom = 11)
 ggmap(nyc_map)
 
 
@@ -119,29 +118,26 @@ ggmap(nyc_map)
 lookup_code("New York", "New York")
 zipcodes <- zctas(cb = TRUE, starts_with = c("10","11"))
 
-plot_data <- tidy(zipcodes, region = "GEOID10") %>%
-  mutate(id = as.numeric(id)) %>%
-  rename(long_zip = long) %>%
-  rename(lat_zip = lat) %>%
-  left_join(., summary_postcode, by = c("id" = "postcode")) %>%
-  filter(!is.na(long_lat))
+plot_data <- zipcodes %>%
+  as_tibble() %>%
+  select(ZCTA5CE10, GEOID10, geometry) %>%
+  rename(region = GEOID10,
+         postcode = ZCTA5CE10) %>%
+  mutate(postcode = as.numeric(postcode)) %>%
+  left_join(., summary_postcode, by = c("postcode" = "postcode"))
+  filter(!is.na(postcode_latlong))
 
-# Neighbourhoods Data
-r <- GET('http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson')
-nyc_neighborhoods <- readOGR(content(r,'text'), 'OGRGeoJSON', verbose = F)
-summary(nyc_neighborhoods)
-nyc_neighborhoods_df <- tidy(nyc_neighborhoods)
 
 rent_map <- ggmap(nyc_map) + 
-  geom_polygon(data=plot_data, aes(x=long_zip, y=lat_zip, group=group, fill = med_commute_time),colour="blue",alpha=0.7) +
+  geom_sf(data=plot_data, aes(fill=med_commute_time, geometry=geometry), colour="blue", alpha=0.7, inherit.aes=FALSE) +
+  # geom_polygon(data=plot_data, aes(x=long_zip, y=lat_zip, group=group, fill = med_commute_time),colour="blue",alpha=0.7) +
   scale_fill_gradient2(low="green",high="red",mid="white",midpoint = 25,limits=c(0,45))+
-  #geom_point(data=summary_postcode,aes(long,lat,size=median_monthly),alpha = 0.5)+
+  # geom_point(data=summary_postcode,aes(long,lat,size=median_monthly),alpha = 0.5)+
   xlim(c(-74.05,-73.9))+
   ylim(c(40.63,40.85))+
   geom_shadowtext(data=summary_postcode,aes(long,lat,label = ceiling(median_monthly)),size=3, colour = "black", bg.colour = "white")
 
 rent_map
-
 
 # Saving the map ----------------------------------------------------------
 
@@ -149,3 +145,13 @@ set.seed(142)
 png(paste0("outputs/",date_string," Rent map.png"), width=900,height=1400,res=144)
 rent_map
 dev.off()
+
+
+
+
+
+# Neighbourhoods Data
+r <- GET('http://data.beta.nyc//dataset/0ff93d2d-90ba-457c-9f7e-39e47bf2ac5f/resource/35dd04fb-81b3-479b-a074-a27a37888ce7/download/d085e2f8d0b54d4590b1e7d1f35594c1pediacitiesnycneighborhoods.geojson')
+nyc_neighborhoods <- readOGR(content(r,'text'), 'OGRGeoJSON', verbose = F)
+summary(nyc_neighborhoods)
+nyc_neighborhoods_df <- tidy(nyc_neighborhoods)
