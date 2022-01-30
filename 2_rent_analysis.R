@@ -10,7 +10,7 @@
 
 # Configuration -----------------------------------
 api_key_location <- "api-key/gcloud_api_key.txt"
-date_string <- "2022-01-24"   # Enter the date you would like to use the data save name in format YYYY-MM-DD
+date_string <- "2022-01-29"   # Enter the date you would like to use the data save name in format YYYY-MM-DD
 
 
 # Basic Setup -------------------------------------------------------------
@@ -98,21 +98,21 @@ output_neighbourhood %>%
 # Summary info by postcode
 summary_postcode <- output_out %>%
   group_by(postcode_latlong) %>%
-  summarise(lat=max(postcode_lat ),
-            long=max(postcode_long ),
+  summarise(lat=max(as.numeric(postcode_lat)),
+            long=max(as.numeric(postcode_long)),
             postcode=max(postcode),
             median_monthly = median(monthly_price_usd,na.rm=TRUE),
             min_monthly = min(monthly_min_usd,na.rm=TRUE),
             max_monthly = max(monthly_max_usd,na.rm=TRUE),
             med_commute_time = median(commute_time),
             med_commute_distance = median(commute_distance),
-            num = n())
+            num = n()) %>%
+  mutate(cost_time = paste0(as.character(median_monthly),", ",as.character(round(med_commute_time, 0))))
 
 
 # Setting up map ----------------------------------------------------------
 nyc_map <- get_map(location = c(lon = -74.00, lat = 40.71), maptype = c("terrain"), zoom = 11)
 ggmap(nyc_map)
-
 
 # Zip Code Data
 lookup_code("New York", "New York")
@@ -124,18 +124,44 @@ plot_data <- zipcodes %>%
   rename(region = GEOID10,
          postcode = ZCTA5CE10) %>%
   mutate(postcode = as.numeric(postcode)) %>%
-  left_join(., summary_postcode, by = c("postcode" = "postcode"))
+  left_join(., summary_postcode, by = c("postcode" = "postcode")) %>%
   filter(!is.na(postcode_latlong))
 
 
-rent_map <- ggmap(nyc_map) + 
+rent_map_commute <- ggmap(nyc_map) + 
   geom_sf(data=plot_data, aes(fill=med_commute_time, geometry=geometry), colour="blue", alpha=0.7, inherit.aes=FALSE) +
   # geom_polygon(data=plot_data, aes(x=long_zip, y=lat_zip, group=group, fill = med_commute_time),colour="blue",alpha=0.7) +
-  scale_fill_gradient2(low="green",high="red",mid="white",midpoint = 25,limits=c(0,45))+
+  scale_fill_gradient2(low="green",high="red",mid="white",midpoint = 30,limits=c(0,45))+
   # geom_point(data=summary_postcode,aes(long,lat,size=median_monthly),alpha = 0.5)+
-  xlim(c(-74.05,-73.9))+
-  ylim(c(40.63,40.85))+
+  xlim(c(-74.02,-73.9))+
+  ylim(c(40.72,40.78))+
   geom_shadowtext(data=summary_postcode,aes(long,lat,label = ceiling(median_monthly)),size=3, colour = "black", bg.colour = "white")
+
+rent_map_commute
+
+rent_map_cost <- ggmap(nyc_map) + 
+  geom_sf(data=plot_data, aes(fill=median_monthly, geometry=geometry), colour="blue", alpha=0.7, inherit.aes=FALSE) +
+  # geom_polygon(data=plot_data, aes(x=long_zip, y=lat_zip, group=group, fill = med_commute_time),colour="blue",alpha=0.7) +
+  scale_fill_gradient2(low="green",high="red",mid="white",midpoint = 2250,limits=c(2000,3000))+
+  # geom_point(data=summary_postcode,aes(long,lat,size=median_monthly),alpha = 0.5)+
+  xlim(c(-74.02,-73.9))+
+  ylim(c(40.72,40.78))+
+  geom_shadowtext(data=summary_postcode,aes(long,lat,label = ceiling(median_monthly)),size=3, colour = "black", bg.colour = "white")
+
+rent_map_cost
+
+
+rent_map_individual <- ggmap(nyc_map) + 
+  # geom_sf(data=plot_data, aes(fill=median_monthly, geometry=geometry), colour="blue", alpha=0.7, inherit.aes=FALSE) +
+  # geom_polygon(data=plot_data, aes(x=long_zip, y=lat_zip, group=group, fill = med_commute_time),colour="blue",alpha=0.7) +
+  geom_point(data=summary_postcode,aes(long,lat,size=med_commute_time, color=median_monthly),alpha = 0.5)+
+  scale_color_gradient2(low="green",high="red",mid="white",midpoint = 2500,limits=c(1500,3000))+
+  xlim(c(-74.02,-73.9))+
+  ylim(c(40.735,40.78))+
+  # geom_shadowtext(data=summary_postcode,aes(long,lat,label = ceiling(median_monthly)),size=3, colour = "black", bg.colour = "white")
+  geom_label_repel(data=summary_postcode,aes(long,lat,label = cost_time),size=3, colour = "black", bg.colour = "white")
+
+rent_map_individual
 
 rent_map
 

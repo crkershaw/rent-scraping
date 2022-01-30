@@ -13,6 +13,13 @@ Search ID (Create the search on spare room, then find the search ID in the the U
 
 Number of results per page - 11 by default, update if this changes
 
+### Setup
+Requires Selenium, which creates a virtual browser to browser Streeteasy.
+ - This requires docker. Download and setup docker desktop, then run this in your command line:
+```
+docker run -d -p 4444:4444 -p 7900:7900 --shm-size="2g" selenium/standalone-chrome
+```
+
 Google API Login
 
 ### Outputs
