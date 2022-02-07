@@ -1,0 +1,76 @@
+/* Fonts ============*/
+
+* { font-family: 'Arial';}
+
+h1 {
+  font-family: 'Arial';
+  font-size: 48px;
+  line-height: 1.2;
+}
+
+h2 {
+  font-family: 'Arial';
+}
+
+/* Colours ==========*/
+  
+  /* logo */
+  .skin-blue .main-header .logo {
+    background-color: #343a40;
+  }
+
+/* logo when hovered */
+  .skin-blue .main-header .logo:hover {
+    background-color: #343a40;
+  }
+
+/* navbar (rest of the header) */
+  .skin-blue .main-header .navbar {
+    background-image: linear-gradient(to top right, #009DE0, #00AC41);
+  }        
+
+/* main sidebar */
+  .skin-blue .main-sidebar {
+    background-color: #343a40;
+  }
+
+/* active selected tab in the sidebarmenu */
+  .skin-blue .main-sidebar .sidebar .sidebar-menu .active a{
+    background-color: #343a40;
+  }
+
+/* other links in the sidebarmenu */
+  .skin-blue .main-sidebar .sidebar .sidebar-menu a{
+    background-color: #343a40;
+      color: #ffffff;
+  }
+
+/* other links in the sidebarmenu when hovered */
+  .skin-blue .main-sidebar .sidebar .sidebar-menu a:hover{
+    background-color: #71767B;
+  }
+/* toggle button when hovered  */                    
+  .skin-blue .main-header .navbar .sidebar-toggle:hover{
+    background-color: #71767B;
+  }
+
+/* Background */
+  .content-wrapper, .right-side {
+    background-color: #ffffff;
+  }
+
+/* Setting image dimensions so they scale for smaller screens */ 
+  img {
+    border: 1;
+    max-width: 100%;
+  }
+
+element.style {
+  width: 33.33%;
+}
+
+/* Header customisation ==========*/
+  /* Setting header to be left aligned */
+  .main-header .navbar-custom-menu, .main-header .navbar-right {
+    float: left;
+  }
