@@ -5,3 +5,5 @@
 *.Rproj
 api-key/
 *.png
+rsconnect/
+api_key/

@@ -111,8 +111,13 @@ summary_postcode <- output_out %>%
 
 
 # Setting up map ----------------------------------------------------------
-nyc_map <- get_map(location = c(lon = -74.00, lat = 40.71), maptype = c("terrain"), zoom = 11)
-ggmap(nyc_map)
+
+
+# nyc_map <- get_map(location = c(lon = -74.00, lat = 40.71), maptype = c("terrain"), zoom = 11)
+# nyc_map_data <- ggmap(nyc_map)
+# saveRDS(nyc_map_data, file="files/nyc_map_data")
+
+nyc_map_data <- readRDS("files/nyc_map_data")
 
 # Zip Code Data
 lookup_code("New York", "New York")
@@ -128,7 +133,7 @@ plot_data <- zipcodes %>%
   filter(!is.na(postcode_latlong))
 
 
-rent_map_commute <- ggmap(nyc_map) + 
+rent_map_commute <- nyc_map_data + 
   geom_sf(data=plot_data, aes(fill=med_commute_time, geometry=geometry), colour="blue", alpha=0.7, inherit.aes=FALSE) +
   # geom_polygon(data=plot_data, aes(x=long_zip, y=lat_zip, group=group, fill = med_commute_time),colour="blue",alpha=0.7) +
   scale_fill_gradient2(low="green",high="red",mid="white",midpoint = 30,limits=c(0,45))+
@@ -139,7 +144,7 @@ rent_map_commute <- ggmap(nyc_map) +
 
 rent_map_commute
 
-rent_map_cost <- ggmap(nyc_map) + 
+rent_map_cost <- nyc_map_data + 
   geom_sf(data=plot_data, aes(fill=median_monthly, geometry=geometry), colour="blue", alpha=0.7, inherit.aes=FALSE) +
   # geom_polygon(data=plot_data, aes(x=long_zip, y=lat_zip, group=group, fill = med_commute_time),colour="blue",alpha=0.7) +
   scale_fill_gradient2(low="green",high="red",mid="white",midpoint = 2250,limits=c(2000,3000))+
@@ -151,7 +156,7 @@ rent_map_cost <- ggmap(nyc_map) +
 rent_map_cost
 
 
-rent_map_individual <- ggmap(nyc_map) + 
+rent_map_individual <- nyc_map_data + 
   # geom_sf(data=plot_data, aes(fill=median_monthly, geometry=geometry), colour="blue", alpha=0.7, inherit.aes=FALSE) +
   # geom_polygon(data=plot_data, aes(x=long_zip, y=lat_zip, group=group, fill = med_commute_time),colour="blue",alpha=0.7) +
   geom_point(data=summary_postcode,aes(long,lat,size=med_commute_time, color=median_monthly),alpha = 0.5)+

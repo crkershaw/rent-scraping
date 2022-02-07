@@ -79,7 +79,7 @@ f_scrape_streeteasy_page <- function(page_code){
   )
   
   # print(output_table)
-  Sys.sleep(runif(1,3,7))
+  # Sys.sleep(runif(1,10,15))
   
   return(output_table)
 
@@ -118,12 +118,50 @@ f_scrape_streeteasy_page_sel <- function(remote_driver, base_url, price_min, pri
 }
 
 
-f_scrape_streeteasy_pages <- function(remote_driver, base_url, price_min, price_max, areas, bedrooms, results_per_page){
+f_spinup <- function(){
+  
+  # Set chrome driver - allows us to use custom options necessary for masking we're a bot
+  cDrv <- chrome(
+    port=4444L, 
+    version="97.0.4692.71",
+    verbose=TRUE
+  )
+  
+  # Setting custom chrome options
+  eCaps <- list(
+    chromeOptions = 
+      list(args = 
+             c(
+               "--disable-dev-shm-usage", 
+               "--start-maximized",
+               "disable-blink-features=AutomationControlled", # Hides we're a bot
+               "--whitelisted-ips"
+             )
+           # prefs = list(
+           #  # "download.default_directory" = "C:/XXX/YYY"
+           # )
+      )
+  )
+  
+  # Starting browser
+  remDr <- remoteDriver(
+    remoteServerAddr = "localhost",
+    port = 4444L,
+    browserName = "chrome",
+    extraCapabilities=eCaps
+  )
+  
+  return(remDr)
+}
+
+f_scrape_streeteasy_pages <- function(remote_driver, base_url, price_min, price_max, areas, bedrooms, results_per_page, min_wait, max_wait){
   
   # uastring <- "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/97.0.4692.71 Safari/537.36"
   # session <- session("https://streeteasy.com/for-rent/nyc", user_agent(uastring))
   # session$response$request$options$useragent
-  
+  print("Spinning up initial server")
+  remDr <- f_spinup()
+  remDr$open()
   
   # page_1 <- "https://streeteasy.com/for-rent/nyc/status:open%7Cprice:1500-3000%7Carea:152,146,133,141,120,122,130,101,131,132,401,402%7Cbeds%3C=1?page=1"
   page_1 <- paste0(base_url,price_min,"-",price_max,"%7Carea:",areas,"%7Cbeds%3C",bedrooms,"?page=", 1) # Getting first page
@@ -141,6 +179,10 @@ f_scrape_streeteasy_pages <- function(remote_driver, base_url, price_min, price_
     as.numeric() %>% 
     max(na.rm=T)
   
+  
+  remDr$close()
+  print("Closed initial server")
+  
   print(paste0("Scraping StreetEasy. Total pages: ", as.character(total_pages)))
   
   pages_vector <- seq(1,total_pages,1)
@@ -149,7 +191,14 @@ f_scrape_streeteasy_pages <- function(remote_driver, base_url, price_min, price_
     
   output_table <- map_df(
     pages_vector, function(.x) {
-      f_scrape_streeteasy_page_sel(
+      
+      # Sys.sleep(runif(1, min_wait, max_wait))
+      print("Spinning up new server")
+      remDr <- f_spinup()
+      print("Opening new server")
+      remDr$open()
+      
+      output = f_scrape_streeteasy_page_sel(
         remote_driver = remDr,
         base_url = "https://streeteasy.com/for-rent/nyc/status:open%7Cprice:", 
         price_min = 1500, 
@@ -157,6 +206,12 @@ f_scrape_streeteasy_pages <- function(remote_driver, base_url, price_min, price_
         areas = "152,146,133,141,120,122,130,101,131,132,401,402", 
         bedrooms = "=1", 
         pageno = .x)
+      
+      print("Closing new server")
+      remDr$close()
+      
+      
+      return(output)
     }
   )
   

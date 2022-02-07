@@ -1,8 +1,8 @@
 
 
-f_timedistance <- function(latlong){
-  output = gmapsdistance(origin = latlong,
-                         destination = office,
+f_timedistance <- function(origin, destination){
+  output = gmapsdistance(origin = origin,
+                         destination = destination,
                          key = get.api.key(),
                          mode = "transit",
                          arr_date = commute_date,
@@ -18,5 +18,3 @@ f_timedistance <- function(latlong){
 #   mutate(distance = unlist(test_times$Distance[2]),
 #          time = unlist(test_times$Time[2])
 #   )
-
-

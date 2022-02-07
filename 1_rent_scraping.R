@@ -15,7 +15,13 @@
 # Configuration -----------------------------------
 
 # Commute details
-office = c("40.76812214708413+-73.92476890076448") # Destination for commute
+commute_destinations <- list(
+  "Mt-Sinai" = c("40.76812214708413+-73.92476890076448"),
+  "TimesSquare" = c("40.75799463546395+-73.9855166715542"),
+  "KTown" = c("40.74777228293039+-73.98694260600726"),
+  "LES" = c("40.71815922302397+-73.99379853211296")
+)
+
 commute_date <- "2022-04-18" # Date (YYYY-MM-DD) for commute length calculations - must be in the future, likely a weekday
 commute_arr_time = "08:30:00" # Arrival time for commute length calculations
 
@@ -31,7 +37,7 @@ results_per_page <- 11 # Number of results displayed per page on Spare Room
 
 
 # Basic Setup -------------------------------------------------------------
-libraries <- c("rvest", "tidyverse", "gsubfn", "lubridate", "googleAuthR", "ggmap", "gmapsdistance", "tigris", "httr", "RSelenium")
+libraries <- c("rvest", "tidyverse", "gsubfn", "lubridate", "googleAuthR", "ggmap", "gmapsdistance", "tigris", "httr", "RSelenium", "wdman")
 
 new_packages <- libraries[!(libraries %in% installed.packages()[, "Package"])]
 if(length(new_packages)>0){ 
@@ -62,7 +68,7 @@ set.api.key(google_login) # Used for gmapdistance
 
 # Calculating total search results
 
-scrape_output <- f_scrape_spareroom_pages(
+sr_scrape_output <- f_scrape_spareroom_pages(
   base_url = base_url, 
   search_id = search_id, 
   end = end, 
@@ -70,49 +76,18 @@ scrape_output <- f_scrape_spareroom_pages(
   results_per_page = results_per_page
 )
 
-output_formatted <- f_format_spareroom_scrape(scrape_output)
-
+sr_output_formatted <- f_format_spareroom_scrape(sr_scrape_output)
 
 
 # Streeteasy scraper ------------------------------------------------------
+
+# Running docker
+system("docker run -d -p 4444:4444 -p 7900:7900 --shm-size=\"2g\" selenium/standalone-chrome")
 
 
 # Close any existing selenium session
 remDr$close()
 cDrv$stop()
-
-# Set chrome driver - allows us to use custom options necessary for masking we're a bot
-cDrv <- chrome(
-  port=4444L, 
-  version="97.0.4692.71",
-  verbose=TRUE
-)
-
-# Setting custom chrome options
-eCaps <- list(
-  chromeOptions = 
-    list(args = 
-           c(
-             "--disable-dev-shm-usage", 
-             # "--start-maximized",
-             "disable-blink-features=AutomationControlled", # Hides we're a bot
-             "--whitelisted-ips"
-           )
-         # prefs = list(
-         #  # "download.default_directory" = "C:/XXX/YYY"
-         # )
-    )
-)
-
-# Starting browser
-remDr <- remoteDriver(
-  remoteServerAddr = "localhost",
-  port = 4444L,
-  browserName = "chrome",
-  extraCapabilities=eCaps
-)
-
-remDr$open()
 
 # Running scrape
 se_scrape_output <- f_scrape_streeteasy_pages(
@@ -121,11 +96,20 @@ se_scrape_output <- f_scrape_streeteasy_pages(
   price_min = 1500, 
   price_max = 3000, 
   areas = "152,146,133,141,120,122,130,101,131,132,401,402", 
-  bedrooms = "=1")
+  bedrooms = "=1",
+  min_wait = 5,
+  max_wait = 10)
 
 remDr$close()
 
 se_output_formatted <- f_format_streeteasy_scrape(se_scrape_output)
+
+
+
+# Merging tables together -------------------------------------------------
+
+output_formatted <- sr_output_formatted %>%
+  full_join(se_output_formatted)
 
 
 # Pulling longitude and latitude ------------------------------------------
@@ -151,17 +135,28 @@ output_longlat <- se_output_formatted %>%
 # Pulling commute time ----------------------------------------------------
 
 # Scraped data commute time pull
-temp_timedistance <- f_timedistance(output_longlat$postcode_latlong)
+output_commute = output_longlat
 
-temp_time <- as_tibble(temp_timedistance$Time) 
-colnames(temp_time) <- c("postcode_latlong","commute_time")
 
-temp_distance <- as_tibble(temp_timedistance$Distance)
-colnames(temp_distance) <- c("postcode_latlong","commute_distance")
+for(i in c(1:length(commute_destinations))){
+  coords = commute_destinations[i]
+  name = names(commute_destinations)[i]
+  
+  print(paste0("Pulling commute times for ", name))
+  
+  temp_timedistance <- f_timedistance(origin = output_longlat$postcode_latlong, destination = coords)
+  
+  temp_time <- as_tibble(temp_timedistance$Time) 
+  colnames(temp_time) <- c("postcode_latlong",paste0("commute_time_", name))
+  
+  temp_distance <- as_tibble(temp_timedistance$Distance)
+  colnames(temp_distance) <- c("postcode_latlong",paste0("commute_distance_", name))
+  
+  output_commute <- output_commute %>%
+    left_join(.,temp_time,by="postcode_latlong") %>%
+    left_join(.,temp_distance,by="postcode_latlong")
+}
 
-output_commute <- output_longlat %>%
-  left_join(.,temp_time,by="postcode_latlong") %>%
-  left_join(.,temp_distance,by="postcode_latlong")
 
 
 # Saving file -------------------------------------------------------------
